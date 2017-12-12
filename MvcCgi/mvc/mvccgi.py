@@ -6,8 +6,8 @@ DEFAULT_ERROR = error = """<html>
     </body>
     </html>"""
 
-import json, platform
-from os import path
+import json, re, sys, os
+
 
 
 # This is a very simple view class, allowing us to read
@@ -47,9 +47,9 @@ class BaseModel():
     def __init__(self, filename, headers=None):
         self.filename = filename
         self.dirty = False
-        if not path.exists(filename) and headers == None:
+        if not os.path.exists(filename) and headers == None:
             raise ValueError("No headers specified and database does not exists")
-        elif path.exists(filename):
+        elif os.path.exists(filename):
             self.reload()
             if headers != None and self.storage['headers'] != headers:
                 raise ValueError("Provided headers do not match those in dbfile")
@@ -244,8 +244,19 @@ class BaseController():
 
         return tocall(params)
 
-    def respond(self, params, method, type="text/html"):
-        result = self.handle(params,method)
+    def handleImage(self, params):
+        file = params['_orig_url'].value[1:]
+        type = "image/"+file.split(".")[-1]
         print(self.getStandardHeader(type=type))
         print()
-        print(result)
+        with open(file,"rb") as f:
+            sys.stdout.buffer.write(f.read())
+
+    def respond(self, params, method, type="text/html"):
+        if re.match(".+\.(?:png|jpg|jpeg|gif)",params['_orig_url'].value.lower()):
+            self.handleImage(params)
+        else:
+            result = self.handle(params,method)
+            print(self.getStandardHeader(type=type))
+            print()
+            print(result)
